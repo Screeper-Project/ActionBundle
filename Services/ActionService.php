@@ -220,13 +220,23 @@ class ActionService
      * @param Parameter $parameter
      * @param $command
      * @return mixed
+     * @throws \Symfony\Component\Config\Definition\Exception\InvalidTypeException
      */
     protected function replaceParameter(Parameter $parameter, $command)
     {
-        if(!($parameter instanceof Player))
-            return str_replace($command, $parameter->getValue(), '%'.$parameter->getName().'%');
+        if(!($parameter->getPlayer() instanceof Player))
+            $value = $parameter->getValue();
         else
-            // A coder
+            if($parameter->getType() == 'pseudo')
+                $value = end($parameter->getPlayer()->getUsernames());
+            elseif($parameter->getType() == 'uuid')
+                $value = $parameter->getPlayer()->getUuid();
+            else
+                throw new InvalidTypeException("Screeper - ActionBundle -
+                Erreur lors du formatage des paramètres,
+                le type d'un paramètre contenant des joueurs doit être un pseudo ou un uuid");
+
+        return str_replace($command, $value, '%'.$parameter->getName().'%');
     }
 
     /**
