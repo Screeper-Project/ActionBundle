@@ -1,0 +1,27 @@
+{
+    "name": "graille-labs/jsonapi-bundle",
+    "type": "symfony-bundle",
+    "description": "JsonApi support in Symfony 2",
+    "keywords": ["minecraft","control","jsonapi","api","server management"],
+    "homepage": "http://github.com/Graille",
+    "version": "1.0.1",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Graille",
+            "email": "astres3000@free.fr",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.0",
+        "symfony/framework-bundle": ">=2.1",
+        "twig/twig": "*",
+        "doctrine/doctrine-bundle": "*"
+    },
+    "autoload": {
+        "psr-0": { "GrailleLabs\\JsonApiBundle": "" }
+    },
+    "target-dir": "GrailleLabs/JsonApiBundle",
+    "minimum-stability": "dev"
+}

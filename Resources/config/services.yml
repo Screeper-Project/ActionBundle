@@ -1,0 +1,7 @@
+parameters:
+
+services:
+    screeper.action.services.action:
+        class: Screeper\ActionBundle\Services\ActionService
+        arguments:
+            - '@service_container'
