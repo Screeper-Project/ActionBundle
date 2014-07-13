@@ -7,7 +7,7 @@ use Doctrine\ORM\Mapping as ORM;
 /**
  * Action
  *
- * @ORM\Table(name="screeper_actions")
+ * @ORM\Table()
  * @ORM\Entity
  */
 class Action
@@ -30,20 +30,21 @@ class Action
     private $command = '';
 
     /**
+     * Les paramètres de la commande
+     * @var \stdClass
+     *
+     * @ORM\OneToMany(targetEntity="Screeper\ActionBundle\Entity\Parameter", mappedBy="action", cascade={"all"})
+     */
+    private $parameters = '';
+
+
+    /**
      * Une description de la commande à éxécuté
      * @var string
      *
      * @ORM\Column(name="description", type="text")
      */
     private $description = '';
-
-    /**
-     * Si l'action porte sur un joueur, on le note et on fait un lien avec le joueur en question
-     * @var \stdClass
-     *
-     * @ORM\ManyToOne(targetEntity="Screeper\PlayerBundle\Entity\Player")
-     */
-    private $onPlayer;
 
     /**
      * Savoir si l'action a tenté d'être éxécuté
@@ -75,7 +76,7 @@ class Action
      *
      * @ORM\Column(name="date_real_execution", type="datetime", nullable=true)
      */
-    private $dateRealExecution;
+    private $dateRealExecution = null;
 
     /**
      * Lors de l'éxécution, permet de savoir si l'action a été un succès ou un echec ("success" ou "error")
@@ -83,7 +84,7 @@ class Action
      *
      * @ORM\Column(name="execution_status", type="string", length=7, nullable=true)
      */
-    private $executionStatus;
+    private $executionStatus = null;
 
     /**
      * Si l'action a déja été reporté, le nombre de reports
@@ -92,12 +93,238 @@ class Action
      * @ORM\Column(name="reports_number", type="integer")
      */
     private $reportsNumber = 0;
+    /**
+     * Constructor
+     */
+    public function __construct()
+    {
+        $this->parameters = new \Doctrine\Common\Collections\ArrayCollection();
+    }
 
     /**
-     * Si l'action à déja été reporté, l'adresse de sa dernière occurence
-     * @var integer
+     * Get id
      *
-     * @ORM\OneToOne(targetEntity="Screeper\ActionBundle\Entity\Action")
+     * @return integer 
      */
-    private $lastReport;
+    public function getId()
+    {
+        return $this->id;
+    }
+
+    /**
+     * Set command
+     *
+     * @param string $command
+     * @return Action
+     */
+    public function setCommand($command)
+    {
+        $this->command = $command;
+
+        return $this;
+    }
+
+    /**
+     * Get command
+     *
+     * @return string 
+     */
+    public function getCommand()
+    {
+        return $this->command;
+    }
+
+    /**
+     * Set description
+     *
+     * @param string $description
+     * @return Action
+     */
+    public function setDescription($description)
+    {
+        $this->description = $description;
+
+        return $this;
+    }
+
+    /**
+     * Get description
+     *
+     * @return string 
+     */
+    public function getDescription()
+    {
+        return $this->description;
+    }
+
+    /**
+     * Set executed
+     *
+     * @param boolean $executed
+     * @return Action
+     */
+    public function setExecuted($executed)
+    {
+        $this->executed = $executed;
+
+        return $this;
+    }
+
+    /**
+     * Get executed
+     *
+     * @return boolean 
+     */
+    public function getExecuted()
+    {
+        return $this->executed;
+    }
+
+    /**
+     * Set dateCreation
+     *
+     * @param \DateTime $dateCreation
+     * @return Action
+     */
+    public function setDateCreation($dateCreation)
+    {
+        $this->dateCreation = $dateCreation;
+
+        return $this;
+    }
+
+    /**
+     * Get dateCreation
+     *
+     * @return \DateTime 
+     */
+    public function getDateCreation()
+    {
+        return $this->dateCreation;
+    }
+
+    /**
+     * Set dateExecution
+     *
+     * @param \DateTime $dateExecution
+     * @return Action
+     */
+    public function setDateExecution($dateExecution)
+    {
+        $this->dateExecution = $dateExecution;
+
+        return $this;
+    }
+
+    /**
+     * Get dateExecution
+     *
+     * @return \DateTime 
+     */
+    public function getDateExecution()
+    {
+        return $this->dateExecution;
+    }
+
+    /**
+     * Set dateRealExecution
+     *
+     * @param \DateTime $dateRealExecution
+     * @return Action
+     */
+    public function setDateRealExecution($dateRealExecution)
+    {
+        $this->dateRealExecution = $dateRealExecution;
+
+        return $this;
+    }
+
+    /**
+     * Get dateRealExecution
+     *
+     * @return \DateTime 
+     */
+    public function getDateRealExecution()
+    {
+        return $this->dateRealExecution;
+    }
+
+    /**
+     * Set executionStatus
+     *
+     * @param string $executionStatus
+     * @return Action
+     */
+    public function setExecutionStatus($executionStatus)
+    {
+        $this->executionStatus = $executionStatus;
+
+        return $this;
+    }
+
+    /**
+     * Get executionStatus
+     *
+     * @return string 
+     */
+    public function getExecutionStatus()
+    {
+        return $this->executionStatus;
+    }
+
+    /**
+     * Set reportsNumber
+     *
+     * @param integer $reportsNumber
+     * @return Action
+     */
+    public function setReportsNumber($reportsNumber)
+    {
+        $this->reportsNumber = $reportsNumber;
+
+        return $this;
+    }
+
+    /**
+     * Get reportsNumber
+     *
+     * @return integer 
+     */
+    public function getReportsNumber()
+    {
+        return $this->reportsNumber;
+    }
+
+    /**
+     * Add parameters
+     *
+     * @param \Screeper\ActionBundle\Entity\Parameter $parameters
+     * @return Action
+     */
+    public function addParameter(\Screeper\ActionBundle\Entity\Parameter $parameters)
+    {
+        $this->parameters[] = $parameters;
+
+        return $this;
+    }
+
+    /**
+     * Remove parameters
+     *
+     * @param \Screeper\ActionBundle\Entity\Parameter $parameters
+     */
+    public function removeParameter(\Screeper\ActionBundle\Entity\Parameter $parameters)
+    {
+        $this->parameters->removeElement($parameters);
+    }
+
+    /**
+     * Get parameters
+     *
+     * @return \Doctrine\Common\Collections\Collection 
+     */
+    public function getParameters()
+    {
+        return $this->parameters;
+    }
 }
