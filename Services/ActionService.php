@@ -48,12 +48,13 @@ class ActionService
      * @param $command
      * @param array $parameters
      * @param array $options
-     * @return ActionEntity
+     * @param bool $return_action
+     * @return bool|ActionEntity
      * @throws \Doctrine\ORM\Internal\Hydration\HydrationException
      * @throws \Symfony\Component\Config\Definition\Exception\InvalidTypeException
      * @throws \Symfony\Component\Serializer\Exception\UnexpectedValueException
      */
-    public function addAction($command, $parameters = array(), $options = array())
+    public function addAction($command, $parameters = array(), $options = array(), $return_action = false)
     {
         $action = new ActionEntity();
 
@@ -111,7 +112,6 @@ class ActionService
             else
                 throw new InvalidTypeException("Screeper - ActionBundle - L'option 'date_execution' doit être un objet de type Datetime");
 
-        // Ajout du serveur
         if(isset($options['server'])) // Si l'action s'éxécute sur un serveur autre que "default"
             if(in_array($options['server'], $this->container->get('screeper.server.services.server')->getServersName())) // Si le serveur est enregistré
                 $action->setServerName($options['server']);
@@ -124,8 +124,8 @@ class ActionService
         // On flush
         $this->entityManager->flush();
 
-        // On retourne l'action si tous c'est bien passé
-        return $action;
+        // On retourne l'action ou un booléen si tous c'est bien passé
+        return ($return_action) ? $action : true;
     }
 
     /**
@@ -184,7 +184,9 @@ class ActionService
         $this->entityManager->flush();
     }
 
-
+    /**
+     * @param ActionEntity $action
+     */
     public function executeAction(ActionEntity $action)
     {
         $json_api = $this->container->get('screeper.json_api.services.api')->getApi($action->getServerName()); // On récupère l'api du serveur
@@ -196,6 +198,7 @@ class ActionService
         foreach($parameters as $parameter)
             $command = $this->replaceParameter($parameter, $command);
 
+        // Verifier si joueur connécté avant d'éxécuté
         // Execution
         $query = $json_api->call('runConsoleCommand', array($command), $server_name);
 
@@ -206,32 +209,52 @@ class ActionService
                 ->setExecutionStatus($query[0]['result']);
 
         $this->entityManager->persist($action);
+        $this->flush();
 
         if($action->getExecutionStatus() == 'error')
             if($action->getCanBeReboot())
                 $this->rebootAction($action);
-
     }
 
+    /**
+     * @param Parameter $parameter
+     * @param $command
+     * @return mixed
+     */
     protected function replaceParameter(Parameter $parameter, $command)
     {
         if(!($parameter instanceof Player))
             return str_replace($command, $parameter->getValue(), '%'.$parameter->getName().'%');
+        else
+            // A coder
     }
 
-    protected function rebootAction(ActionEntity $action, $option = array())
+    /**
+     * @param ActionEntity $action
+     * @param array $option
+     * @param bool $return_new_action
+     * @return bool|ActionEntity
+     */
+    protected function rebootAction(ActionEntity $action, $option = array(), $return_new_action = false)
     {
-        $new_action = $this->addAction($action->getCommand(), $action->getParametersAsArray(), array(
-            'reboot' => $action->getCanBeReboot(),
-            'description' => $action->getDescription(),
-            'server' => $action->getServerName(),
-            'date_execution' => $action->getDateExecution()->modify(ActionService::ADD_TIME_WHEN_REBOOT)
-        ));
+        $new_action = $this->addAction(
+            $action->getCommand(),
+            $action->getParametersAsArray(),
+            array(
+                'reboot' => $action->getCanBeReboot(),
+                'description' => $action->getDescription(),
+                'server' => $action->getServerName(),
+                'date_execution' => $action->getDateExecution()->modify(ActionService::ADD_TIME_WHEN_REBOOT)
+                ),
+            true); // On crée une nouvelle action et la récupère
 
-        $new_action->setLastReboot($action)
+        $new_action
+            ->setLastReboot($action)
             ->setRebootNumber($action->getRebootNumber() + 1); // On met a jour le nombre de reboot de la nouvelle action
 
         $this->entityManager->persist($new_action);
         $this->entityManager->flush();
+
+        return ($return_new_action) ? $new_action : true;
     }
 }
