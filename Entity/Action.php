@@ -93,6 +93,15 @@ class Action
      * @ORM\Column(name="reports_number", type="integer")
      */
     private $reportsNumber = 0;
+
+    /**
+     * Le serveur sur lequel s'éxécute l'action
+     * @var string
+     *
+     * @ORM\Column(name="server_name", type="string", length=255)
+     */
+    private $serverName = 'default';
+    
     /**
      * Constructor
      */
@@ -326,5 +335,28 @@ class Action
     public function getParameters()
     {
         return $this->parameters;
+    }
+
+    /**
+     * Set serverName
+     *
+     * @param string $serverName
+     * @return Action
+     */
+    public function setServerName($serverName)
+    {
+        $this->serverName = $serverName;
+
+        return $this;
+    }
+
+    /**
+     * Get serverName
+     *
+     * @return string 
+     */
+    public function getServerName()
+    {
+        return $this->serverName;
     }
 }

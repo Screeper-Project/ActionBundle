@@ -15,8 +15,10 @@ use Doctrine\ORM\Internal\Hydration\HydrationException;
 use Screeper\ActionBundle\Entity\Action as ActionEntity;
 use Screeper\ActionBundle\Entity\Parameter;
 use Screeper\PlayerBundle\Entity\Player;
+use Screeper\ServerBundle\Services\ServerService;
 use Symfony\Component\Config\Definition\Exception\InvalidTypeException;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\Security\Acl\Exception\Exception;
 use Symfony\Component\Serializer\Exception\UnexpectedValueException;
 
 class ActionService
@@ -55,15 +57,14 @@ class ActionService
         $action = new ActionEntity();
 
         if(empty($command))
-            throw new UnexpectedValueException("Screeper - ActionBundle - La commande à ajouté est vide");
+            throw new UnexpectedValueException("Screeper - ActionBundle - La commande spécifié est vide");
 
         // Formattage des paramètres
-        $parameters_return = $this->formatParameters($parameters, $action, true, false); // On convertis tous les paramètres en objets et on récupère leur nom
 
-        $parameters = $parameters_return[0];
-        $parameters_name = $parameters_return[1];
+        $parameters_name = array_key($parameters); // On récupère le nom des paramètres fournis
+        $parameters = $this->formatParameters($parameters, $action, false); // On convertit tous les paramètres en objets
 
-        $parameters_real_name = null;
+        $parameters_real_name = null; // On récupère le nom des paramètres dans la commande
 
         // On recherche des paramètres dont on a oublié de spécifié une valeur
         foreach($parameters_real_name as $name)
@@ -85,7 +86,8 @@ class ActionService
             ->setExecutionStatus(null)
             ->setReportsNumber(0)
             ->setDescription('')
-            ->setDateExecution(new \DateTime());
+            ->setDateExecution(new \DateTime())
+            ->setServerName(ServerService::DEFAULT_SERVER_NAME);
 
         if(isset($options['description']))
             $action->setDescription($options['description']);
@@ -96,10 +98,17 @@ class ActionService
             else
                 throw new InvalidTypeException("Screeper - ActionBundle - L'option 'date_execution' doit être un objet de type Datetime");
 
-        // On persist enfin l'action
+        // Ajout du serveur
+        if(isset($options['server'])) // Si l'action s'éxécute sur un serveur autre que "default"
+            if(in_array($options['server'], $this->container->get('screeper.server.services.server')->getServersName())) // Si le serveur est enregistré
+                $action->setServerName($options['server']);
+            else
+                throw new UnexpectedValueException("Screeper - ActionBundle - Le serveur spécifié dans la commande : '".$options['server']."', n'existe pas dans la configuration app/config/config.yml");
+
+        // On persist l'action
         $this->entityManager->persist($action);
 
-        // On flush le tous
+        // On flush
         $this->entityManager->flush();
 
         // On retourne la valeur true si tous c'est bien passé
@@ -110,18 +119,14 @@ class ActionService
      * Permet la récupération des paramètres au format objet
      * @param $parameters
      * @param $action
-     * @param bool $get_name
      * @param bool $persist
      * @return array
      * @throws \ExpressionErrorException
      * @throws \HydrationException
      */
-    public function formatParameters($parameters, $action, $get_name = false, $persist = false)
+    public function formatParameters($parameters, $action, $persist = false)
     {
         $parameters_object = array();
-
-        if($get_name)
-            $parameters_name = array();
 
         foreach($parameters as $name => $array_value)
             if(isset($array_value['value']))
@@ -132,9 +137,6 @@ class ActionService
                 $new_parameter
                     ->setName($name)
                     ->setAction($action);
-
-                if($get_name)
-                    $parameters_name[] = $name;
 
                 if($value instanceof Player) // Si la valeur est un joueur
                     if(isset($array_value['type']))
@@ -161,6 +163,22 @@ class ActionService
             else
                 throw new \HydrationException("Screeper - ActionBundle - Les paramètres définis doivent tous avoir une valeur");
 
-        return ($get_name) ? array($parameters_object, $parameters_name) : array($parameters_object);
+        return $parameters_object;
+    }
+
+    public function removeAction(ActionEntity $action)
+    {
+        $this->entityManager->remove($action);
+        $this->entityManager->flush();
+    }
+
+    public function executeAction(ActionEntity $action)
+    {
+        $json_api = $this->container->get('screeper.json_api.services.api')->getApi($action->getServerName());
+    }
+
+    public function replaceParameter($parameters, $action)
+    {
+
     }
 }
