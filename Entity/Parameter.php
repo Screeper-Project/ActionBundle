@@ -43,15 +43,16 @@ class Parameter
      *
      * @ORM\Column(name="value", type="text", nullable=true)
      */
-    private $value;
+    private $value = null;
 
     /**
      * Si le joueur est relié a un playerEntity
      * @var \stdClass
      *
      * @ORM\ManyToOne(targetEntity="Screeper\PlayerBundle\Entity\Player", cascade={"persist"})
+     * @ORM\Column(nullable=true)
      */
-    private $player;
+    private $player = null;
 
     /**
      * L'action auquelle est attaché le paramètre

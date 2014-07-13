@@ -37,7 +37,6 @@ class Action
      */
     private $parameters = '';
 
-
     /**
      * Une description de la commande à éxécuté
      * @var string
@@ -87,12 +86,29 @@ class Action
     private $executionStatus = null;
 
     /**
-     * Si l'action a déja été reporté, le nombre de reports
+     * Attribut désignant si l'action peut être reporté
      * @var integer
      *
-     * @ORM\Column(name="reports_number", type="integer")
+     * @ORM\Column(name="reboot", type="boolean")
      */
-    private $reportsNumber = 0;
+    private $canBeReboot = true;
+
+    /**
+     * Si l'action à déja été reporté, le nombre de reports
+     * @var integer
+     *
+     * @ORM\Column(name="reboot_number", type="integer")
+     */
+    private $rebootNumber = 0;
+
+    /**
+     * Lien vers la dernière instance de l'objet si l'action à déjà été reporté
+     * @var integer
+     *
+     * @ORM\OneToOne(targetEntity="Screeper\ActionBundle\Entity\Action")
+     * @ORM\Column(nullable=true)
+     */
+    private $lastReboot = null;
 
     /**
      * Le serveur sur lequel s'éxécute l'action
@@ -101,13 +117,32 @@ class Action
      * @ORM\Column(name="server_name", type="string", length=255)
      */
     private $serverName = 'default';
-    
+
     /**
      * Constructor
      */
     public function __construct()
     {
         $this->parameters = new \Doctrine\Common\Collections\ArrayCollection();
+    }
+
+    /**
+     * Get parameters as array
+     *
+     * @return array
+     */
+    public function getParametersAsArray()
+    {
+        $parameters = $this->getParameters();
+        $array_parameters = array();
+
+        foreach($parameters as $parameter)
+            $array_parameters[$parameter->getName()] = array(
+                'value' => ($parameter->getPlayer instanceof Player) ? $parameter->getPlayer() : $parameter->getValue(),
+                'type' => $parameter->getType()
+            );
+
+        return $array_parameters;
     }
 
     /**
@@ -282,26 +317,95 @@ class Action
     }
 
     /**
-     * Set reportsNumber
+     * Set canBeReboot
      *
-     * @param integer $reportsNumber
+     * @param boolean $canBeReboot
      * @return Action
      */
-    public function setReportsNumber($reportsNumber)
+    public function setCanBeReboot($canBeReboot)
     {
-        $this->reportsNumber = $reportsNumber;
+        $this->canBeReboot = $canBeReboot;
 
         return $this;
     }
 
     /**
-     * Get reportsNumber
+     * Get canBeReboot
+     *
+     * @return boolean 
+     */
+    public function getCanBeReboot()
+    {
+        return $this->canBeReboot;
+    }
+
+    /**
+     * Set rebootNumber
+     *
+     * @param integer $rebootNumber
+     * @return Action
+     */
+    public function setRebootNumber($rebootNumber)
+    {
+        $this->rebootNumber = $rebootNumber;
+
+        return $this;
+    }
+
+    /**
+     * Get rebootNumber
      *
      * @return integer 
      */
-    public function getReportsNumber()
+    public function getRebootNumber()
     {
-        return $this->reportsNumber;
+        return $this->rebootNumber;
+    }
+
+    /**
+     * Set lastReboot
+     *
+     * @param string $lastReboot
+     * @return Action
+     */
+    public function setLastReboot($lastReboot)
+    {
+        $this->lastReboot = $lastReboot;
+
+        return $this;
+    }
+
+    /**
+     * Get lastReboot
+     *
+     * @return string 
+     */
+    public function getLastReboot()
+    {
+        return $this->lastReboot;
+    }
+
+    /**
+     * Set serverName
+     *
+     * @param string $serverName
+     * @return Action
+     */
+    public function setServerName($serverName)
+    {
+        $this->serverName = $serverName;
+
+        return $this;
+    }
+
+    /**
+     * Get serverName
+     *
+     * @return string 
+     */
+    public function getServerName()
+    {
+        return $this->serverName;
     }
 
     /**
@@ -335,28 +439,5 @@ class Action
     public function getParameters()
     {
         return $this->parameters;
-    }
-
-    /**
-     * Set serverName
-     *
-     * @param string $serverName
-     * @return Action
-     */
-    public function setServerName($serverName)
-    {
-        $this->serverName = $serverName;
-
-        return $this;
-    }
-
-    /**
-     * Get serverName
-     *
-     * @return string 
-     */
-    public function getServerName()
-    {
-        return $this->serverName;
     }
 }

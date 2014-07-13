@@ -18,13 +18,14 @@ use Screeper\PlayerBundle\Entity\Player;
 use Screeper\ServerBundle\Services\ServerService;
 use Symfony\Component\Config\Definition\Exception\InvalidTypeException;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\Security\Acl\Exception\Exception;
 use Symfony\Component\Serializer\Exception\UnexpectedValueException;
 
 class ActionService
 {
     protected $container;
     protected $entityManager;
+
+    const ADD_TIME_WHEN_REBOOT = '+10 minutes';
 
     /**
      * @param ContainerInterface $container
@@ -47,7 +48,7 @@ class ActionService
      * @param $command
      * @param array $parameters
      * @param array $options
-     * @return bool
+     * @return ActionEntity
      * @throws \Doctrine\ORM\Internal\Hydration\HydrationException
      * @throws \Symfony\Component\Config\Definition\Exception\InvalidTypeException
      * @throws \Symfony\Component\Serializer\Exception\UnexpectedValueException
@@ -62,9 +63,12 @@ class ActionService
         // Formattage des paramètres
 
         $parameters_name = array_key($parameters); // On récupère le nom des paramètres fournis
-        $parameters = $this->formatParameters($parameters, $action, false); // On convertit tous les paramètres en objets
+        $parameters = $this->unserializeParameters($parameters, $action, false); // On convertit tous les paramètres en objets
 
-        $parameters_real_name = null; // On récupère le nom des paramètres dans la commande
+        // On récupère le nom des paramètres dans la commande
+        $parameters_real_name = array();
+        preg_match_all ( "#%(.*?)%#", $command, $parameters_real_name);
+        $parameters_real_name = $parameters_real_name[1];
 
         // On recherche des paramètres dont on a oublié de spécifié une valeur
         foreach($parameters_real_name as $name)
@@ -84,13 +88,22 @@ class ActionService
             ->setDateRealExecution(null)
             ->setExecuted(false)
             ->setExecutionStatus(null)
-            ->setReportsNumber(0)
             ->setDescription('')
+            ->setRebootNumber(0)
+            ->setLastReboot(null)
+            ->setCanBeReboot(true)
             ->setDateExecution(new \DateTime())
             ->setServerName(ServerService::DEFAULT_SERVER_NAME);
 
+        // Ajout des options
         if(isset($options['description']))
             $action->setDescription($options['description']);
+
+        if(isset($options['reboot']))
+            if(is_bool($options['reboot']))
+                $action->setDescription($options['reboot']);
+            else
+                throw new InvalidTypeException("Screeper - ActionBundle - L'option 'reboot' doit être un booléen");
 
         if(isset($options['date_execution']))
             if($options['date_execution'] instanceof \DateTime)
@@ -111,20 +124,19 @@ class ActionService
         // On flush
         $this->entityManager->flush();
 
-        // On retourne la valeur true si tous c'est bien passé
-        return true;
+        // On retourne l'action si tous c'est bien passé
+        return $action;
     }
 
     /**
      * Permet la récupération des paramètres au format objet
      * @param $parameters
      * @param $action
-     * @param bool $persist
      * @return array
      * @throws \ExpressionErrorException
      * @throws \HydrationException
      */
-    public function formatParameters($parameters, $action, $persist = false)
+    protected function unserializeParameters($parameters, $action)
     {
         $parameters_object = array();
 
@@ -156,9 +168,6 @@ class ActionService
                         ->setType('value');
 
                 $parameters_object[] = $new_parameter;
-
-                if($persist) // Si on a demandé a ce que les nouveau paramètre soit persisté
-                    $this->entityManager->persist($new_parameter);
             }
             else
                 throw new \HydrationException("Screeper - ActionBundle - Les paramètres définis doivent tous avoir une valeur");
@@ -166,19 +175,63 @@ class ActionService
         return $parameters_object;
     }
 
+    /**
+     * @param ActionEntity $action
+     */
     public function removeAction(ActionEntity $action)
     {
         $this->entityManager->remove($action);
         $this->entityManager->flush();
     }
 
+
     public function executeAction(ActionEntity $action)
     {
-        $json_api = $this->container->get('screeper.json_api.services.api')->getApi($action->getServerName());
+        $json_api = $this->container->get('screeper.json_api.services.api')->getApi($action->getServerName()); // On récupère l'api du serveur
+
+        $command = $action->getCommand();
+        $parameters = $action->getParameters();
+
+        // Formattage de la commande avec les paramètres
+        foreach($parameters as $parameter)
+            $command = $this->replaceParameter($parameter, $command);
+
+        // Execution
+        $query = $json_api->call('runConsoleCommand', array($command), $server_name);
+
+        if(isset($query[0]['result']))
+            $action
+                ->setDateRealExecution(new \DateTime())
+                ->setExecuted(true)
+                ->setExecutionStatus($query[0]['result']);
+
+        $this->entityManager->persist($action);
+
+        if($action->getExecutionStatus() == 'error')
+            if($action->getCanBeReboot())
+                $this->rebootAction($action);
+
     }
 
-    public function replaceParameter($parameters, $action)
+    protected function replaceParameter(Parameter $parameter, $command)
     {
+        if(!($parameter instanceof Player))
+            return str_replace($command, $parameter->getValue(), '%'.$parameter->getName().'%');
+    }
 
+    protected function rebootAction(ActionEntity $action, $option = array())
+    {
+        $new_action = $this->addAction($action->getCommand(), $action->getParametersAsArray(), array(
+            'reboot' => $action->getCanBeReboot(),
+            'description' => $action->getDescription(),
+            'server' => $action->getServerName(),
+            'date_execution' => $action->getDateExecution()->modify(ActionService::ADD_TIME_WHEN_REBOOT)
+        ));
+
+        $new_action->setLastReboot($action)
+            ->setRebootNumber($action->getRebootNumber() + 1); // On met a jour le nombre de reboot de la nouvelle action
+
+        $this->entityManager->persist($new_action);
+        $this->entityManager->flush();
     }
 }
