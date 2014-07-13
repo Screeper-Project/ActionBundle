@@ -5,3 +5,4 @@ services:
         class: Screeper\ActionBundle\Services\ActionService
         arguments:
             - '@service_container'
+            - '@doctrine.orm.entity_manager'

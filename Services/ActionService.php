@@ -186,6 +186,7 @@ class ActionService
 
     /**
      * @param ActionEntity $action
+     * @return bool|null
      */
     public function executeAction(ActionEntity $action)
     {
@@ -195,25 +196,39 @@ class ActionService
         $parameters = $action->getParameters();
 
         // Formattage de la commande avec les paramètres
+        $checkConnexion = $this->container->get('screeper.player.services.player')->getServerStatus($action->getServerName()); // On vérifie que le serveur est opérationnel
+        $playerService = $this->container->get('screeper.player.services.player');
+
         foreach($parameters as $parameter)
+        {
+            if($parameter->getPlayer() instanceof Player)
+                $checkConnexion = ($checkConnexion && $playerService->isConnected($parameter->getPlayer())); // On vérifie si tous les joueurs nécéssaire à la commande sont présents, on stocke le résultat dans $checkConnexion
+
             $command = $this->replaceParameter($parameter, $command);
+        }
 
-        // Verifier si joueur connécté avant d'éxécuté
-        // Execution
-        $query = $json_api->call('runConsoleCommand', array($command), $server_name);
+        if($checkConnexion) // Si tous est en ordre au niveau des connexions, on peu éxécuté la commande
+        {
+            $query = $json_api->call('runConsoleCommand', array($command), $server_name);
 
-        if(isset($query[0]['result']))
-            $action
-                ->setDateRealExecution(new \DateTime())
-                ->setExecuted(true)
-                ->setExecutionStatus($query[0]['result']);
+            if(isset($query[0]['result']))
+                $action
+                    ->setDateRealExecution(new \DateTime())
+                    ->setExecuted(true)
+                    ->setExecutionStatus($query[0]['result']);
 
-        $this->entityManager->persist($action);
-        $this->flush();
+            $this->entityManager->persist($action);
+            $this->flush();
 
-        if($action->getExecutionStatus() == 'error')
-            if($action->getCanBeReboot())
-                $this->rebootAction($action);
+            // En cas d'erreur, on reporte la commande à la prochaine vérification si cela a été demandé
+            if($action->getExecutionStatus() == 'error')
+                if($action->getCanBeReboot())
+                    $this->rebootAction($action);
+
+            return true;
+        }
+        else
+            return null;
     }
 
     /**
@@ -228,7 +243,7 @@ class ActionService
             $value = $parameter->getValue();
         else
             if($parameter->getType() == 'pseudo')
-                $value = end($parameter->getPlayer()->getUsernames());
+                $value = $parameter->getPlayer()->getLastUsername();
             elseif($parameter->getType() == 'uuid')
                 $value = $parameter->getPlayer()->getUuid();
             else
