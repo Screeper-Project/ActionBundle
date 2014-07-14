@@ -12,9 +12,11 @@ namespace Screeper\ActionBundle\Services;
 
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Internal\Hydration\HydrationException;
+
 use Screeper\ActionBundle\Entity\Action as ActionEntity;
-use Screeper\ActionBundle\Entity\Parameter;
-use Screeper\PlayerBundle\Entity\Player;
+use Screeper\ActionBundle\Entity\Parameter as ParameterEntity;
+use Screeper\PlayerBundle\Entity\Player as PlayerEntity;
+
 use Screeper\ServerBundle\Services\ServerService;
 use Symfony\Component\Config\Definition\Exception\InvalidTypeException;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -129,13 +131,13 @@ class ActionService
             if(isset($array_value['value']))
             {
                 $value = $array_value['value'];
-                $new_parameter = new Parameter();
+                $new_parameter = new ParameterEntity();
 
                 $new_parameter
                     ->setName($name)
                     ->setAction($action);
 
-                if($value instanceof Player) // Si la valeur est un joueur
+                if($value instanceof PlayerEntity) // Si la valeur est un joueur
                     if(isset($array_value['type']))
                         if(in_array(strtolower($array_value['type']), array('uuid', 'pseudo'))) // Si le type est de type 'pseudo' ou 'uuid'
                             $new_parameter
@@ -186,7 +188,7 @@ class ActionService
 
         foreach($parameters as $parameter)
         {
-            if($parameter->getPlayer() instanceof Player)
+            if($parameter->getPlayer() instanceof PlayerEntity)
                 $checkConnection = ($checkConnection && $playerService->isConnected($parameter->getPlayer())); // On vérifie si tous les joueurs nécéssaire à la commande sont présents, on stocke le résultat dans $checkConnexion
 
             $command = $this->replaceParameter($parameter, $command);
@@ -217,14 +219,14 @@ class ActionService
     }
 
     /**
-     * @param Parameter $parameter
+     * @param ParameterEntity $parameter
      * @param $command
      * @return mixed
      * @throws \Symfony\Component\Config\Definition\Exception\InvalidTypeException
      */
-    protected function replaceParameter(Parameter $parameter, $command)
+    protected function replaceParameter(ParameterEntity $parameter, $command)
     {
-        if(!($parameter->getPlayer() instanceof Player))
+        if(!($parameter->getPlayer() instanceof PlayerEntity))
             $value = $parameter->getValue();
         else
             if($parameter->getType() == 'pseudo')

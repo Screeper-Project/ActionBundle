@@ -25,7 +25,7 @@ class ExecuteCommand extends ContainerAwareCommand
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $container = $this->getContainer();
-        $checkConnection = $container->get('screeper.player.services.player')->getServerStatus($action->getServerName());
+        $checkConnection = $container->get('screeper.json_api.services.api')->getServerStatus($action->getServerName());
 
         if($checkConnection) // On vérifie que le serveur est opérationnel
         {
