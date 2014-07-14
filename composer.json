@@ -23,8 +23,8 @@
         "graille-labs/screeper-player-bundle": "dev-master"
     },
     "autoload": {
-        "psr-0": { "Screeper\\JsonApiBundle": "" }
+        "psr-0": { "Screeper\\ActionBundle": "" }
     },
-    "target-dir": "Screeper/JsonApiBundle",
+    "target-dir": "Screeper/ActionBundle",
     "minimum-stability": "dev"
 }
