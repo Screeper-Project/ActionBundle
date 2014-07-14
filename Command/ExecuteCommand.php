@@ -17,24 +17,36 @@ class ExecuteCommand extends ContainerAwareCommand
         ;
     }
 
+    /**
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @return int|null|void
+     */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $container = $this->getContainer();
+        $checkConnection = $container->get('screeper.player.services.player')->getServerStatus($action->getServerName());
 
-        $action_service = $container->get('screeper.action.services.action');
-        $repository = $container
-            ->get('doctrine')
-            ->getRepository('ScreeperActionBundle:Action');
+        if($checkConnection) // On vérifie que le serveur est opérationnel
+        {
+            $action_service = $container->get('screeper.action.services.action');
+            $repository = $container
+                ->get('doctrine')
+                ->getRepository('ScreeperActionBundle:Action');
 
-        $results = $repository
-            ->createQueryBuilder('a')
-            ->where('a.dateExecution <= :date')
-                ->setParameter('date', new \DateTime())
-            ->orderBy('a.dateExecution', 'ASC')
-            ->getQuery()
-            ->getResult();
+            // On recherche les commandes à éxécuté
+            $results = $repository
+                ->createQueryBuilder('a')
+                ->where('a.dateExecution <= :date')
+                    ->setParameter('date', new \DateTime())
+                ->andWhere('a.executed == :executed')
+                    ->setParameter('executed', false)
+                ->orderBy('a.dateExecution', 'ASC')
+                ->getQuery()
+                ->getResult();
 
-        foreach($results as $action)
-            $action_service->executeAction($action);
+            foreach($results as $action)
+                $action_service->executeAction($action);
+        }
     }
 }

@@ -38,13 +38,7 @@ class ActionService
     }
 
     /**
-     * Fonctionnement :
-     * $command correspond a la commande a éxécuté, formatter, les paramètres correspondent a des paramètre entre %...%
-     * $parameters répertorie la valeur de chaque paramètres de la manière suivante : array('param1' => array("value" => value1), 'param2' => array("value" => value2)....)
-     * Si le paramètre est un pseudo ou un UUID, il peut etre référencé a un joueur (si le module PlayerBundle a été activé et configuré) afin d'éviter les problème lié aux changements de pseudo, le paramètre spécifié sera alors de type Player
-     * et alors, value sera de la forme array('value' => PlayerEntity, 'type' => 'pseudo' ou 'uuid')
-     * $options définie les options de la commande : 'date' : date d'éxécution de la commande (par default : le plus tôt possible)
-     *
+     * Permet d'ajouté une action
      * @param $command
      * @param array $parameters
      * @param array $options
@@ -61,8 +55,7 @@ class ActionService
         if(empty($command))
             throw new UnexpectedValueException("Screeper - ActionBundle - La commande spécifié est vide");
 
-        // Formattage des paramètres
-
+        // Formatage des paramètres
         $parameters_name = array_key($parameters); // On récupère le nom des paramètres fournis
         $parameters = $this->unserializeParameters($parameters, $action, false); // On convertit tous les paramètres en objets
 
@@ -77,7 +70,6 @@ class ActionService
                 throw new HydrationException("Screeper - ActionBundle - Vous avez utilisé le paramètre '".$name."' mais vous n'avez pas spécifié de valeur pour celui-ci");
 
         // On recherche si on n'a pas également spécifié des paramètre en trop, alors on les supprimes, sinon, on l'ajoute à l'action
-        $parameters_fixed = array();
         foreach($parameters_name as $i => $name)
             if(in_array($name, $parameters_real_name));
                 $action->addParameter($parameters[$i]);
@@ -86,13 +78,6 @@ class ActionService
         $action
             ->setCommand($command)
             ->setDateCreation(new \DateTime())
-            ->setDateRealExecution(null)
-            ->setExecuted(false)
-            ->setExecutionStatus(null)
-            ->setDescription('')
-            ->setRebootNumber(0)
-            ->setLastReboot(null)
-            ->setCanBeReboot(true)
             ->setDateExecution(new \DateTime())
             ->setServerName(ServerService::DEFAULT_SERVER_NAME);
 
@@ -195,19 +180,19 @@ class ActionService
         $command = $action->getCommand();
         $parameters = $action->getParameters();
 
-        // Formattage de la commande avec les paramètres
-        $checkConnexion = $this->container->get('screeper.player.services.player')->getServerStatus($action->getServerName()); // On vérifie que le serveur est opérationnel
+        // Formatage de la commande avec les paramètres
+        $checkConnection = true;
         $playerService = $this->container->get('screeper.player.services.player');
 
         foreach($parameters as $parameter)
         {
             if($parameter->getPlayer() instanceof Player)
-                $checkConnexion = ($checkConnexion && $playerService->isConnected($parameter->getPlayer())); // On vérifie si tous les joueurs nécéssaire à la commande sont présents, on stocke le résultat dans $checkConnexion
+                $checkConnection = ($checkConnection && $playerService->isConnected($parameter->getPlayer())); // On vérifie si tous les joueurs nécéssaire à la commande sont présents, on stocke le résultat dans $checkConnexion
 
             $command = $this->replaceParameter($parameter, $command);
         }
 
-        if($checkConnexion) // Si tous est en ordre au niveau des connexions, on peu éxécuté la commande
+        if($checkConnection) // Si tous est en ordre au niveau des connexions, on peu éxécuté la commande
         {
             $query = $json_api->call('runConsoleCommand', array($command), $server_name);
 
@@ -220,14 +205,14 @@ class ActionService
             $this->entityManager->persist($action);
             $this->flush();
 
-            // En cas d'erreur, on reporte la commande à la prochaine vérification si cela a été demandé
+            // En cas d'erreur, on reporte la commande à la prochaine vérification si cela à été demandé
             if($action->getExecutionStatus() == 'error')
                 if($action->getCanBeReboot())
                     $this->rebootAction($action);
 
             return true;
         }
-        else
+        else // Si la connexion pose problème, on n'exécute rien et on repporte donc le tous a la prochaine éxécution
             return null;
     }
 
@@ -260,8 +245,9 @@ class ActionService
      * @param bool $return_new_action
      * @return bool|ActionEntity
      */
-    protected function rebootAction(ActionEntity $action, $option = array(), $return_new_action = false)
+    public function rebootAction(ActionEntity $action, $option = array(), $return_new_action = false)
     {
+        // On crée une nouvelle action, copie de la première, et on la récupère
         $new_action = $this->addAction(
             $action->getCommand(),
             $action->getParametersAsArray(),
@@ -271,12 +257,14 @@ class ActionService
                 'server' => $action->getServerName(),
                 'date_execution' => $action->getDateExecution()->modify(ActionService::ADD_TIME_WHEN_REBOOT)
                 ),
-            true); // On crée une nouvelle action et la récupère
+            true);
 
+        // On met à jour le nombre de reboot de la nouvelle action
         $new_action
             ->setLastReboot($action)
-            ->setRebootNumber($action->getRebootNumber() + 1); // On met a jour le nombre de reboot de la nouvelle action
+            ->setNbReboot($action->getNbReboot() + 1);
 
+        // On persist le tous
         $this->entityManager->persist($new_action);
         $this->entityManager->flush();
 

@@ -97,9 +97,9 @@ class Action
      * Si l'action à déja été reporté, le nombre de reports
      * @var integer
      *
-     * @ORM\Column(name="reboot_number", type="integer")
+     * @ORM\Column(name="nb_reboot", type="integer")
      */
-    private $rebootNumber = 0;
+    private $nbReboot = 0;
 
     /**
      * Lien vers la dernière instance de l'objet si l'action à déjà été reporté
@@ -144,6 +144,7 @@ class Action
 
         return $array_parameters;
     }
+    
 
     /**
      * Get id
@@ -340,26 +341,26 @@ class Action
     }
 
     /**
-     * Set rebootNumber
+     * Set nbReboot
      *
-     * @param integer $rebootNumber
+     * @param integer $nbReboot
      * @return Action
      */
-    public function setRebootNumber($rebootNumber)
+    public function setNbReboot($nbReboot)
     {
-        $this->rebootNumber = $rebootNumber;
+        $this->nbReboot = $nbReboot;
 
         return $this;
     }
 
     /**
-     * Get rebootNumber
+     * Get nbReboot
      *
      * @return integer 
      */
-    public function getRebootNumber()
+    public function getNbReboot()
     {
-        return $this->rebootNumber;
+        return $this->nbReboot;
     }
 
     /**
