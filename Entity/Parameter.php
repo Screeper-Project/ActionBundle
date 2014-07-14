@@ -7,7 +7,7 @@ use Doctrine\ORM\Mapping as ORM;
 /**
  * Parameter
  *
- * @ORM\Table()
+ * @ORM\Table(name="screeper__parameters")
  * @ORM\Entity
  */
 class Parameter

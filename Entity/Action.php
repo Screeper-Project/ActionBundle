@@ -7,7 +7,7 @@ use Doctrine\ORM\Mapping as ORM;
 /**
  * Action
  *
- * @ORM\Table()
+ * @ORM\Table(name="screeper__actions")
  * @ORM\Entity
  */
 class Action
