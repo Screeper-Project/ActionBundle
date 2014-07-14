@@ -137,11 +137,11 @@ class ActionService
 
                 if($value instanceof Player) // Si la valeur est un joueur
                     if(isset($array_value['type']))
-                        if(in_array($array_value['type'], array('uuid', 'pseudo'))) // Si le type est de type 'pseudo' ou 'uuid'
+                        if(in_array(strtolower($array_value['type']), array('uuid', 'pseudo'))) // Si le type est de type 'pseudo' ou 'uuid'
                             $new_parameter
                                 ->setPlayer($value)
                                 ->setValue(null)
-                                ->setType($array_value['type']);
+                                ->setType(strtolower($array_value['type']));
                         else
                             throw new \ExpressionErrorException("Screeper - ActionBundle - Le type d'un paramètre contenant des joueurs doit être un pseudo ou un uuid");
                     else
