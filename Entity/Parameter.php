@@ -50,7 +50,7 @@ class Parameter
      * @var \stdClass
      *
      * @ORM\ManyToOne(targetEntity="Screeper\PlayerBundle\Entity\Player", cascade={"persist"})
-     * @ORM\Column(nullable=true)
+     * @ORM\JoinColumn(nullable=true)
      */
     private $player = null;
 

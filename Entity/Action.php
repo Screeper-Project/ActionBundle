@@ -3,6 +3,7 @@
 namespace Screeper\ActionBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use Screeper\PlayerBundle\Entity\Player as PlayerEntity;
 
 /**
  * Action
@@ -106,7 +107,7 @@ class Action
      * @var integer
      *
      * @ORM\OneToOne(targetEntity="Screeper\ActionBundle\Entity\Action")
-     * @ORM\Column(nullable=true)
+     * @ORM\JoinColumn(nullable=true)
      */
     private $lastReboot = null;
 
@@ -138,7 +139,7 @@ class Action
 
         foreach($parameters as $parameter)
             $array_parameters[$parameter->getName()] = array(
-                'value' => ($parameter->getPlayer instanceof Player) ? $parameter->getPlayer() : $parameter->getValue(),
+                'value' => ($parameter->getPlayer() instanceof PlayerEntity) ? $parameter->getPlayer() : $parameter->getValue(),
                 'type' => $parameter->getType()
             );
 

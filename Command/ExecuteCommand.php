@@ -1,6 +1,7 @@
 <?php
 namespace Screeper\ActionBundle\Command;
 
+use Screeper\ServerBundle\Services\ServerService;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -14,6 +15,11 @@ class ExecuteCommand extends ContainerAwareCommand
         $this
             ->setName('screeper:execute_actions')
             ->setDescription('Éxécute les actions en attentes')
+            ->addArgument(
+                'server',
+                InputArgument::OPTIONAL,
+                'Nom du serveur'
+            )
         ;
     }
 
@@ -24,8 +30,13 @@ class ExecuteCommand extends ContainerAwareCommand
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        if($input->getArgument('server'))
+            $server = $input->getArgument('server');
+        else
+            $server = ServerService::DEFAULT_SERVER_NAME;
+
         $container = $this->getContainer();
-        $checkConnection = $container->get('screeper.json_api.services.api')->getServerStatus($action->getServerName());
+        $checkConnection = $container->get('screeper.json_api.services.api')->getServerStatus($server);
 
         if($checkConnection) // On vérifie que le serveur est opérationnel
         {
@@ -39,14 +50,14 @@ class ExecuteCommand extends ContainerAwareCommand
                 ->createQueryBuilder('a')
                 ->where('a.dateExecution <= :date')
                     ->setParameter('date', new \DateTime())
-                ->andWhere('a.executed == :executed')
+                ->andWhere('a.executed = :executed')
                     ->setParameter('executed', false)
                 ->orderBy('a.dateExecution', 'ASC')
                 ->getQuery()
                 ->getResult();
 
             foreach($results as $action)
-                $action_service->executeAction($action);
+                $action_service->executeAction($action, $output);
         }
     }
 }

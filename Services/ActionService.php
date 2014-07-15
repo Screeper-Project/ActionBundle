@@ -19,8 +19,11 @@ use Screeper\PlayerBundle\Entity\Player as PlayerEntity;
 
 use Screeper\ServerBundle\Services\ServerService;
 use Symfony\Component\Config\Definition\Exception\InvalidTypeException;
+use Symfony\Component\CssSelector\Exception\ExpressionErrorException;
+
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Serializer\Exception\UnexpectedValueException;
+use Symfony\Component\Console\Output\OutputInterface;
 
 class ActionService
 {
@@ -58,12 +61,12 @@ class ActionService
             throw new UnexpectedValueException("Screeper - ActionBundle - La commande spécifié est vide");
 
         // Formatage des paramètres
-        $parameters_name = array_key($parameters); // On récupère le nom des paramètres fournis
+        $parameters_name = array_keys($parameters); // On récupère le nom des paramètres fournis
         $parameters = $this->unserializeParameters($parameters, $action, false); // On convertit tous les paramètres en objets
 
         // On récupère le nom des paramètres dans la commande
         $parameters_real_name = array();
-        preg_match_all ( "#%(.*?)%#", $command, $parameters_real_name);
+        preg_match_all("#%(.*?)%#", $command, $parameters_real_name);
         $parameters_real_name = $parameters_real_name[1];
 
         // On recherche des paramètres dont on a oublié de spécifié une valeur
@@ -72,9 +75,9 @@ class ActionService
                 throw new HydrationException("Screeper - ActionBundle - Vous avez utilisé le paramètre '".$name."' mais vous n'avez pas spécifié de valeur pour celui-ci");
 
         // On recherche si on n'a pas également spécifié des paramètre en trop, alors on les supprimes, sinon, on l'ajoute à l'action
-        foreach($parameters_name as $i => $name)
-            if(in_array($name, $parameters_real_name));
-                $action->addParameter($parameters[$i]);
+        foreach($parameters_name as $key => $name)
+            if(in_array($name, $parameters_real_name))
+                $action->addParameter($parameters[$key]);
 
         // On fini le remplissage de l'action si il n'y a pas eu d'erreur
         $action
@@ -89,7 +92,7 @@ class ActionService
 
         if(isset($options['reboot']))
             if(is_bool($options['reboot']))
-                $action->setDescription($options['reboot']);
+                $action->setCanBeReboot($options['reboot']);
             else
                 throw new InvalidTypeException("Screeper - ActionBundle - L'option 'reboot' doit être un booléen");
 
@@ -127,37 +130,38 @@ class ActionService
     {
         $parameters_object = array();
 
-        foreach($parameters as $name => $array_value)
-            if(isset($array_value['value']))
-            {
-                $value = $array_value['value'];
-                $new_parameter = new ParameterEntity();
+        if($parameters != null) // Permet de continuer si on a spécifié "null"
+            foreach($parameters as $name => $array_value)
+                if(isset($array_value['value']))
+                {
+                    $value = $array_value['value'];
+                    $new_parameter = new ParameterEntity();
 
-                $new_parameter
-                    ->setName($name)
-                    ->setAction($action);
-
-                if($value instanceof PlayerEntity) // Si la valeur est un joueur
-                    if(isset($array_value['type']))
-                        if(in_array(strtolower($array_value['type']), array('uuid', 'pseudo'))) // Si le type est de type 'pseudo' ou 'uuid'
-                            $new_parameter
-                                ->setPlayer($value)
-                                ->setValue(null)
-                                ->setType(strtolower($array_value['type']));
-                        else
-                            throw new \ExpressionErrorException("Screeper - ActionBundle - Le type d'un paramètre contenant des joueurs doit être un pseudo ou un uuid");
-                    else
-                        throw new \HydrationException("Screeper - ActionBundle - Pour un paramètre faisant référence à un joueur, vous devez spécifié le type de ce paramètre");
-                else
                     $new_parameter
-                        ->setPlayer(null)
-                        ->setValue(strval($value))
-                        ->setType('value');
+                        ->setName($name)
+                        ->setAction($action);
 
-                $parameters_object[] = $new_parameter;
-            }
-            else
-                throw new \HydrationException("Screeper - ActionBundle - Les paramètres définis doivent tous avoir une valeur");
+                    if($value instanceof PlayerEntity) // Si la valeur est un joueur
+                        if(isset($array_value['type']))
+                            if(in_array(strtolower($array_value['type']), array('uuid', 'pseudo'))) // Si le type est de type 'pseudo' ou 'uuid'
+                                $new_parameter
+                                    ->setPlayer($value)
+                                    ->setValue(null)
+                                    ->setType(strtolower($array_value['type']));
+                            else
+                                throw new ExpressionErrorException("Screeper - ActionBundle - Le type d'un paramètre contenant des joueurs doit être un pseudo ou un uuid");
+                        else
+                            throw new HydrationException("Screeper - ActionBundle - Pour un paramètre faisant référence à un joueur, vous devez spécifié le type de ce paramètre");
+                    else
+                        $new_parameter
+                            ->setPlayer(null)
+                            ->setValue(strval($value))
+                            ->setType('value');
+
+                    $parameters_object[] = $new_parameter;
+                }
+                else
+                    throw new HydrationException("Screeper - ActionBundle - Les paramètres définis doivent tous avoir une valeur");
 
         return $parameters_object;
     }
@@ -173,9 +177,10 @@ class ActionService
 
     /**
      * @param ActionEntity $action
+     * @param OutputInterface $output
      * @return bool|null
      */
-    public function executeAction(ActionEntity $action)
+    public function executeAction(ActionEntity $action, OutputInterface $output = null)
     {
         $json_api = $this->container->get('screeper.json_api.services.api')->getApi($action->getServerName()); // On récupère l'api du serveur
 
@@ -188,34 +193,43 @@ class ActionService
 
         foreach($parameters as $parameter)
         {
-            if($parameter->getPlayer() instanceof PlayerEntity)
-                $checkConnection = ($checkConnection && $playerService->isConnected($parameter->getPlayer())); // On vérifie si tous les joueurs nécéssaire à la commande sont présents, on stocke le résultat dans $checkConnexion
+            $player = $parameter->getPlayer();
+            if($player instanceof PlayerEntity)
+                $checkConnection = ($checkConnection && $playerService->isConnected($player, $action->getServerName())); // On vérifie si tous les joueurs nécéssaire à la commande sont présents, on stocke le résultat dans $checkConnexion
 
             $command = $this->replaceParameter($parameter, $command);
         }
 
         if($checkConnection) // Si tous est en ordre au niveau des connexions, on peu éxécuté la commande
         {
-            $query = $json_api->call('runConsoleCommand', array($command), $server_name);
+            $query = $json_api->call('runConsoleCommand', array($command), $action->getServerName());
 
+            // En cas d'erreur, on reporte la commande à la prochaine vérification si cela à été demandé, sinon, on laisse passé
             if(isset($query[0]['result']))
-                $action
-                    ->setDateRealExecution(new \DateTime())
-                    ->setExecuted(true)
-                    ->setExecutionStatus($query[0]['result']);
+                if(($query[0]['result'] == 'error') && $action->getCanBeReboot())
+                    $this->rebootAction($action, array(), false, $output);
+                else
+                {
+                    $action
+                        ->setDateRealExecution(new \DateTime())
+                        ->setExecuted(true)
+                        ->setExecutionStatus($query[0]['result']);
 
-            $this->entityManager->persist($action);
-            $this->flush();
+                    $this->entityManager->persist($action);
+                    $this->entityManager->flush();
+                }
 
-            // En cas d'erreur, on reporte la commande à la prochaine vérification si cela à été demandé
-            if($action->getExecutionStatus() == 'error')
-                if($action->getCanBeReboot())
-                    $this->rebootAction($action);
+            if($output instanceof OutputInterface)
+                $output->writeln("L'action numero ".$action->getId()." a ete traite.");
 
             return true;
         }
         else // Si la connexion pose problème, on n'exécute rien et on repporte donc le tous a la prochaine éxécution
+        {
+            $this->rebootAction($action, array(), false, $output);
+
             return null;
+        }
     }
 
     /**
@@ -238,16 +252,17 @@ class ActionService
                 Erreur lors du formatage des paramètres,
                 le type d'un paramètre contenant des joueurs doit être un pseudo ou un uuid");
 
-        return str_replace($command, $value, '%'.$parameter->getName().'%');
+        return str_replace('%'.$parameter->getName().'%', $value, $command);
     }
 
     /**
      * @param ActionEntity $action
      * @param array $option
      * @param bool $return_new_action
+     * @param OutputInterface $output
      * @return bool|ActionEntity
      */
-    public function rebootAction(ActionEntity $action, $option = array(), $return_new_action = false)
+    public function rebootAction(ActionEntity $action, $option = array(), $return_new_action = false, OutputInterface $output = null)
     {
         // On crée une nouvelle action, copie de la première, et on la récupère
         $new_action = $this->addAction(
@@ -266,9 +281,19 @@ class ActionService
             ->setLastReboot($action)
             ->setNbReboot($action->getNbReboot() + 1);
 
-        // On persist le tous
+        $action
+            ->setDateRealExecution(new \DateTime())
+            ->setExecuted(true)
+            ->setExecutionStatus('reboot');
+
+        // On persist et on flush
         $this->entityManager->persist($new_action);
+        $this->entityManager->persist($action);
+
         $this->entityManager->flush();
+
+        if($output instanceof OutputInterface)
+            $output->writeln("Suite a une erreur, l'action numero '".$action->getId()."' a ete reporte.");
 
         return ($return_new_action) ? $new_action : true;
     }
