@@ -8,12 +8,12 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class ExecuteCommand extends ContainerAwareCommand
+class ActionsListCommand extends ContainerAwareCommand
 {
     protected function configure()
     {
         $this
-            ->setName('screeper:execute_actions')
+            ->setName('screeper:execute:actionsList')
             ->setDescription('Éxécute les actions en attentes')
             ->addArgument(
                 'server',
