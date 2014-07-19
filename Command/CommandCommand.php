@@ -15,10 +15,8 @@ class CommandCommand extends ContainerAwareCommand
         $this
             ->setName('screeper:execute:command')
             ->setDescription('Éxécute les actions en attentes')
-            ->addArgument(
-                'action', InputArgument::OPTIONAL, 'Action a efféctuer',
-                'server', InputArgument::OPTIONAL, 'Nom du serveur'
-            )
+            ->addArgument('action', InputArgument::OPTIONAL, 'Action a efféctuer')
+            ->addArgument('server', InputArgument::OPTIONAL, 'Nom du serveur')
         ;
     }
 
