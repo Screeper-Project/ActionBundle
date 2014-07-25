@@ -84,7 +84,7 @@ class ActionService
             ->setCommand($command)
             ->setDateCreation(new \DateTime())
             ->setDateExecution(new \DateTime())
-            ->setServerName(ServerService::DEFAULT_SERVER_NAME);
+            ->setServerName(ServerService::DEFAULT_SERVER_KEY);
 
         // Ajout des options
         if(isset($options['description']))
@@ -103,7 +103,7 @@ class ActionService
                 throw new InvalidTypeException("Screeper - ActionBundle - L'option 'date_execution' doit être un objet de type Datetime");
 
         if(isset($options['server'])) // Si l'action s'éxécute sur un serveur autre que "default"
-            if(in_array($options['server'], $this->container->get('screeper.server.services.server')->getServersName())) // Si le serveur est enregistré
+            if(in_array($options['server'], $this->container->get('screeper.server.services.server')->getServersKey())) // Si le serveur est enregistré
                 $action->setServerName($options['server']);
             else
                 throw new UnexpectedValueException("Screeper - ActionBundle - Le serveur spécifié dans la commande : '".$options['server']."', n'existe pas dans la configuration app/config/config.yml");
@@ -123,8 +123,8 @@ class ActionService
      * @param $parameters
      * @param $action
      * @return array
-     * @throws \ExpressionErrorException
-     * @throws \HydrationException
+     * @throws \Doctrine\ORM\Internal\Hydration\HydrationException
+     * @throws \Symfony\Component\CssSelector\Exception\ExpressionErrorException
      */
     protected function unserializeParameters($parameters, $action)
     {

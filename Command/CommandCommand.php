@@ -29,7 +29,7 @@ class CommandCommand extends ContainerAwareCommand
         if($input->getArgument('server'))
             $server = $input->getArgument('server');
         else
-            $server = ServerService::DEFAULT_SERVER_NAME;
+            $server = ServerService::DEFAULT_SERVER_KEY;
 
         $jsonapi_service = $this->getContainer()->get('screeper.json_api.services.api');
 
