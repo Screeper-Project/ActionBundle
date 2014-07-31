@@ -1,5 +1,5 @@
 {
-    "name": "graille-labs/screeper-action-bundle",
+    "name": "screeper-project/action-bundle",
     "type": "symfony-bundle",
     "description": "",
     "keywords": ["minecraft","control","jsonapi","api","server management","screeper"],
@@ -9,7 +9,7 @@
     "authors": [
         {
             "name": "Graille",
-            "email": "astres3000@free.fr",
+            "email": "dev-team@legasteel.fr",
             "role": "Developer"
         }
     ],
@@ -18,9 +18,9 @@
         "symfony/framework-bundle": ">=2.1",
         "twig/twig": "*",
         "doctrine/doctrine-bundle": "*",
-        "graille-labs/screeper-server-bundle": "dev-master",
-        "graille-labs/screeper-jsonapi-bundle": "dev-master",
-        "graille-labs/screeper-player-bundle": "dev-master"
+        "screeper-project/server-bundle": "dev-master",
+        "screeper-project/jsonapi-bundle": "dev-master",
+        "screeper-project/player-bundle": "dev-master"
     },
     "autoload": {
         "psr-0": { "Screeper\\ActionBundle": "" }
