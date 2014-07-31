@@ -26,11 +26,7 @@ class CommandCommand extends ContainerAwareCommand
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        if($input->getArgument('server'))
-            $server = $input->getArgument('server');
-        else
-            $server = ServerService::DEFAULT_SERVER_KEY;
-
+        $server = ($input->getArgument('server')) ? $input->getArgument('server') : ServerService::DEFAULT_SERVER_KEY;
         $jsonapi_service = $this->getContainer()->get('screeper.json_api.services.api');
 
         $checkConnection = $jsonapi_service->getServerStatus($server);
