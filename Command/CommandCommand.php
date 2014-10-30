@@ -14,7 +14,7 @@ class CommandCommand extends ContainerAwareCommand
     {
         $this
             ->setName('screeper:execute:command')
-            ->setDescription('Éxécute les actions en attentes')
+            ->setDescription('Execute une commande')
             ->addArgument('action', InputArgument::OPTIONAL, 'Action a efféctuer')
             ->addArgument('server', InputArgument::OPTIONAL, 'Nom du serveur')
         ;
@@ -23,6 +23,7 @@ class CommandCommand extends ContainerAwareCommand
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
+     * @return int|null|void
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
@@ -30,7 +31,8 @@ class CommandCommand extends ContainerAwareCommand
         $jsonapi_service = $this->getContainer()->get('screeper.json_api.services.api');
 
         $checkConnection = $jsonapi_service->getServerStatus($server);
+
         if($checkConnection) // On vérifie que le serveur est opérationnel
-            $jsonapi_service->executeCommand($input->getArgument('action'));
+            $jsonapi_service->executeCommand($input->getArgument('action'), $server);
     }
 }

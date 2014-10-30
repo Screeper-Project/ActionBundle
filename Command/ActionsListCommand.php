@@ -14,7 +14,7 @@ class ActionsListCommand extends ContainerAwareCommand
     {
         $this
             ->setName('screeper:execute:actionsList')
-            ->setDescription('Éxécute les actions en attentes')
+            ->setDescription('Execute les actions en attentes')
             ->addArgument(
                 'server',
                 InputArgument::OPTIONAL,
